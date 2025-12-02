@@ -15,8 +15,15 @@ export const generateAffiliatePost = async (
   templateName: string,
   onProgress: (step: number, message: string) => void
 ): Promise<GenerationResult> => {
-    // FIX: Initialize with API key from environment variables as per guidelines.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const apiKey = process.env.API_KEY;
+    
+    if (!apiKey) {
+        console.error("API Key is missing. Please check your environment variables.");
+        throw new Error("API Key is missing. Please set the API_KEY environment variable in your deployment settings.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey: apiKey });
 
   try {
     onProgress(1, 'Generating high-converting copy...');
@@ -39,7 +46,6 @@ export const generateAffiliatePost = async (
       - Values must be descriptive prompts for generating visually stunning, relevant images (16:9 aspect ratio).
     `;
 
-    // FIX: Added responseSchema for robust JSON output.
     const contentGenerationResponse = await ai.models.generateContent({
       model: textModel,
       contents: contentPrompt,
@@ -65,6 +71,11 @@ export const generateAffiliatePost = async (
         }
       }
     });
+
+    if (!contentGenerationResponse.text) {
+        throw new Error("No text returned from content generation.");
+    }
+
     const generatedContent = JSON.parse(contentGenerationResponse.text);
     const { htmlBodyContent, imagePrompts } = generatedContent;
 
@@ -75,9 +86,13 @@ export const generateAffiliatePost = async (
       ai.models.generateContent({model: imageModel, contents: imagePrompts.features, config: { imageConfig: { aspectRatio: "16:9" } } as any}),
       ai.models.generateContent({model: imageModel, contents: imagePrompts.ctaBanner, config: { imageConfig: { aspectRatio: "16:9" } } as any})
     ];
+    
+    // Process image responses sequentially or via Promise.all, but handle errors gracefully
     const imageResponses = await Promise.all(imagePromises);
     const base64Images = imageResponses.map(res => {
-        // FIX: Iterating through parts to find image data as per guidelines.
+        if (!res.candidates || !res.candidates[0] || !res.candidates[0].content || !res.candidates[0].content.parts) {
+            throw new Error("Invalid response structure from image generation.");
+        }
         for (const part of res.candidates[0].content.parts) {
             if (part.inlineData) {
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
@@ -92,7 +107,7 @@ export const generateAffiliatePost = async (
       Based on the product "${productName}", create SEO metadata.
       Your response MUST be a valid JSON object with two keys: "title" and "metaDescription".
     `;
-    // FIX: Added responseSchema for robust JSON output.
+    
     const seoResponse = await ai.models.generateContent({
         model: textModel,
         contents: seoPrompt,
@@ -108,6 +123,11 @@ export const generateAffiliatePost = async (
             },
         }
     });
+    
+    if (!seoResponse.text) {
+         throw new Error("No text returned from SEO generation.");
+    }
+
     const seoData = JSON.parse(seoResponse.text);
 
     let finalHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${seoData.title}</title><meta name="description" content="${seoData.metaDescription}"><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-gray-100 text-gray-800 font-sans"><div class="container mx-auto p-4 md:p-8">${htmlBodyContent}</div></body></html>`;
@@ -125,9 +145,18 @@ export const generateAffiliatePost = async (
       images: base64Images,
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating affiliate post:", error);
     onProgress(0, ''); 
-    throw new Error(error instanceof Error ? error.message : "An unknown error occurred during generation.");
+    
+    let errorMessage = "An unknown error occurred during generation.";
+    if (error instanceof Error) {
+        errorMessage = error.message;
+        if (errorMessage.includes("NetworkError") || errorMessage.includes("Failed to fetch")) {
+            errorMessage = "Network Error: Unable to connect to Google Gemini API. Please ensure your API key is correct and valid, and that you are not blocked by a firewall or CORS restrictions.";
+        }
+    }
+    
+    throw new Error(errorMessage);
   }
 };

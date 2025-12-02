@@ -1,12 +1,8 @@
-
 import React, { useState, useRef } from 'react';
 import { usePosts } from '../context/PostsContext';
 import { generateAffiliatePost } from '../services/geminiService';
 import { TEMPLATE_STYLES, DEFAULT_HOPLINK } from '../constants';
 import { GenerationResult } from '../types';
-
-declare var JSZip: any;
-declare var saveAs: any;
 
 const LoadingOverlay: React.FC<{ progress: number; message: string }> = ({ progress, message }) => {
   const progressPercentage = (progress / 4) * 100;

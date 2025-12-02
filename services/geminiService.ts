@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { GenerationResult } from "../types";
 
@@ -72,9 +71,9 @@ export const generateAffiliatePost = async (
     onProgress(2, 'Creating 3 professional images...');
 
     const imagePromises = [
-      ai.models.generateContent({model: imageModel, contents: imagePrompts.hero, config: { imageConfig: { aspectRatio: "16:9" } }}),
-      ai.models.generateContent({model: imageModel, contents: imagePrompts.features, config: { imageConfig: { aspectRatio: "16:9" } }}),
-      ai.models.generateContent({model: imageModel, contents: imagePrompts.ctaBanner, config: { imageConfig: { aspectRatio: "16:9" } }})
+      ai.models.generateContent({model: imageModel, contents: imagePrompts.hero, config: { imageConfig: { aspectRatio: "16:9" } } as any}),
+      ai.models.generateContent({model: imageModel, contents: imagePrompts.features, config: { imageConfig: { aspectRatio: "16:9" } } as any}),
+      ai.models.generateContent({model: imageModel, contents: imagePrompts.ctaBanner, config: { imageConfig: { aspectRatio: "16:9" } } as any})
     ];
     const imageResponses = await Promise.all(imagePromises);
     const base64Images = imageResponses.map(res => {

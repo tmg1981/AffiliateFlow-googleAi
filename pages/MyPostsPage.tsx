@@ -3,7 +3,11 @@ import { usePosts } from '../context/PostsContext';
 import { GeneratedPost } from '../types';
 import { EyeIcon, DocumentDuplicateIcon, TrashIcon, ArrowDownTrayIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import JSZip from 'jszip';
-import { saveAs } from 'file-saver';
+import FileSaver from 'file-saver';
+
+// Fix for file-saver import issues between TS and ESM CDN
+// Handles cases where FileSaver is the function itself (default export) or an object containing saveAs
+const saveAs = (FileSaver as any).saveAs || (FileSaver as any).default || FileSaver;
 
 const PreviewModal: React.FC<{ htmlContent: string; onClose: () => void }> = ({ htmlContent, onClose }) => {
   return (

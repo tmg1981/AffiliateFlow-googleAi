@@ -1,15 +1,61 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { GoogleGenAI } from '@google/genai';
 
 const SettingsPage: React.FC = () => {
+  const [isChecking, setIsChecking] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState<boolean | null>(null);
+
+  const handleCheckApiKey = async () => {
+    setIsChecking(true);
+    setStatusMessage(null);
+    setIsSuccess(null);
+
+    const apiKey = process.env.API_KEY;
+
+    if (!apiKey) {
+      setStatusMessage("API Key is not configured. Please set the API_KEY environment variable in your Vercel project settings.");
+      setIsSuccess(false);
+      setIsChecking(false);
+      return;
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      await ai.models.countTokens({ model: 'gemini-2.5-flash', contents: 'test' });
+      setStatusMessage("API Key is valid and the service is reachable. You are ready to generate posts.");
+      setIsSuccess(true);
+    } catch (error) {
+      console.error("API Key check failed:", error);
+      setStatusMessage("API Key validation failed. Please double-check your key in the Vercel environment variables. Ensure the key is correct and that billing is enabled for your Google Cloud project.");
+      setIsSuccess(false);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold text-white mb-6">Settings</h1>
       <div className="bg-gray-800 p-8 rounded-lg shadow-xl space-y-8">
+        
         <div>
-          <h2 className="text-xl font-semibold text-white mb-4">API Configuration</h2>
-          <p className="text-gray-300">
-            This application is configured to use the Gemini API. The API key is managed via environment variables and does not need to be configured here.
+          <h2 className="text-xl font-semibold text-white mb-4">API Status Check</h2>
+          <p className="text-gray-300 mb-4">
+            Before generating a post, you can verify that your API key is correctly configured and that the Gemini service is accessible.
           </p>
+          <button
+            onClick={handleCheckApiKey}
+            disabled={isChecking}
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed"
+          >
+            {isChecking ? 'Checking...' : 'Check API Key Status'}
+          </button>
+          {statusMessage && (
+            <div className={`mt-4 text-sm p-3 rounded-md ${isSuccess ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+              {statusMessage}
+            </div>
+          )}
         </div>
 
         <div>
